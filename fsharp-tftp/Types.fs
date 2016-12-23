@@ -73,14 +73,6 @@ type TransferMode =
     | NetAscii
     | Octet
 
-(*
-Any transfer begins with a request to read or write a file, which
-   also serves to request a connection.
-*)
-type Request =
-    | Read
-    | Write
-
 (* 
 If the server grants the
    request, the connection is opened and the file is sent in fixed
@@ -185,6 +177,13 @@ type AckPacket = {
 type ErrorPacket = {
     Error: ErrorCode
 }
+
+type Packet = 
+    | Read of ReadPacket
+    | Write of WritePacket
+    | Data of DataPacket
+    | Ack of AckPacket
+    | Error of ErrorPacket 
 
 type File = {
     File: DataBlock[];
