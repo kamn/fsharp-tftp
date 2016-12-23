@@ -35,6 +35,28 @@ let getModeFromString (modeStr: string) =
         | "octet" -> TransferMode.Octet
         | _ -> raise (new Exception("Not valid mode"))
 
+let sleepWorkflow  = async {
+    printfn "Starting sleep workflow at %O" DateTime.Now.TimeOfDay
+    do! Async.Sleep 2000
+    printfn "Finished sleep workflow at %O" DateTime.Now.TimeOfDay
+    }
+
+let basicServerThread () = async {
+    let udpServer = new UdpClient(69);
+    let serverEP = new IPEndPoint(IPAddress.Any, 0); 
+    while true do
+        let result = udpServer.Receive(ref serverEP)
+        printfn "packetCode %A" (getPacketCode result)
+        let (filename, nextIdx) =  getFileName result
+        printfn "filename %s" filename
+        let mode = getModeString nextIdx result |> getModeFromString
+        printfn "mode %A" mode
+        //printfn "%A" result
+        let! childWorkflow =  Async.StartChild sleepWorkflow
+        ()
+    } 
+
+//http://stackoverflow.com/questions/26706149/f-continuous-loop-in-f
 [<EntryPoint>]
 let main argv = 
     printfn "Fsharp TFTP"
@@ -44,17 +66,11 @@ let main argv =
     if isServer then
         printfn "Server mode"
      
-        let udpServer = new UdpClient(69);
-        let serverEP = new IPEndPoint(IPAddress.Any, 0); 
-        let result = udpServer.Receive(ref serverEP)
-        printfn "packetCode %A" (getPacketCode result)
-        let (filename, nextIdx) =  getFileName result
-        printfn "filename %s" filename
-        let mode = getModeString nextIdx result |> getModeFromString
-        printfn "mode %A" mode
-        printfn "%A" result
+        let cts = new System.Threading.CancellationTokenSource()
+        Async.Start(basicServerThread (), cts.Token)
         printfn "Press Enter to exit"
         Console.ReadLine () |> ignore
+        cts.Cancel ()
     else
         printfn "Is Client"
     0 // return an integer exit code
